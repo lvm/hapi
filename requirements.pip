@@ -1,0 +1,14 @@
+Flask==0.10.1
+Flask-RESTful==0.3.1
+Jinja2==2.7.3
+MarkupSafe==0.23
+Werkzeug==0.9.6
+aniso8601==0.90
+argparse==1.2.1
+chardet==2.3.0
+distribute==0.6.24
+itsdangerous==0.24
+python-debian==0.1.23
+pytz==2014.10
+six==1.8.0
+wsgiref==0.1.2

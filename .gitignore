@@ -1,0 +1,4 @@
+*.pyc
+*~
+hapi.log
+dists/
