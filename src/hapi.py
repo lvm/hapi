@@ -195,24 +195,36 @@ def populate_ver_dict(packages_files=None):
     params: (list)List of Packages.
     returns: dicts
     """
-    ver_dict = {}
+    ver_dict = {'ultimo':{},
+                'por_version':{}
+                }
 
     if packages_files:
         for pkg in packages_files:
             for p in parse_packages_file(pkg):
-                if p.get('Package') not in ver_dict.keys():
-                        ver_dict[p.get('Package')] = {"version": p.get('Version'),
-                                                      "info": INFO_URL + p.get('Package'),
-                                                      "deb": REPO_URL + p.get('Filename')}
+                if p.get('Package') not in ver_dict['ultimo'].keys():
+                    ver_dict['ultimo'][p.get('Package')] = {"version": p.get('Version'),
+                                                            "info_url": INFO_URL + p.get('Package'),
+                                                            "deb_url": REPO_URL + p.get('Filename')}
                 else:
-                    ver1 = ver_dict[p.get('Package')]['version']
+                    ver1 = ver_dict['ultimo'][p.get('Package')]['version']
                     ver2 = p.get('Version')
 
                     cmp_ver = cmp_versions(ver1, ver2)
                     if cmp_ver == 0:
-                        ver_dict[p.get('Package')] = {"version": p.get('Version'),
-                                                      "info": INFO_URL + p.get('Package'),
-                                                      "deb": REPO_URL + p.get('Filename')}
+                        ver_dict['ultimo'][p.get('Package')] = {"version": p.get('Version'),
+                                                                "info_url": INFO_URL + p.get('Package'),
+                                                                "deb_url": REPO_URL + p.get('Filename')}
+
+
+
+                if p.get('Package') not in ver_dict['por_version'].keys():
+                    ver_dict['por_version'][p.get('Package')] = {p.get('Version'): {"info_url": INFO_URL + p.get('Package'),
+                                                                                    "deb_url": REPO_URL + p.get('Filename')}
+                                                                 }
+                else:
+                    ver_dict['por_version'][p.get('Package')][p.get('Version')] = {"info_url": INFO_URL + p.get('Package'),
+                                                                                   "deb_url": REPO_URL + p.get('Filename')}
 
     return ver_dict
 
@@ -227,9 +239,9 @@ REPO_URL = SETTINGS['url'].get('repo')
 INFO_URL = SETTINGS['url'].get('info')
 packages_files = find_packages_files(SETTINGS['repository'].get('dists'))
 package_dict = prepare_dict(packages_files)
-dist_dict = populate_dist_dict(package_dict)
-arch_dict = populate_arch_dict(packages_files)
-deb_dict = populate_deb_dict(packages_files)
+#dist_dict = populate_dist_dict(package_dict)
+#arch_dict = populate_arch_dict(packages_files)
+#deb_dict = populate_deb_dict(packages_files)
 ver_dict = populate_ver_dict(packages_files)
 
 
@@ -239,83 +251,96 @@ ver_dict = populate_ver_dict(packages_files)
 
 class Home(restful.Resource):
     def get(self):
-        return {'packages':'/package/<pkg_name>',
-                'distributions':'/dist/<release>/<dist>/<arch>',
-                'architecture':'/arch/<arch>',
-                'version':'/version/<arch>'
+        # return {'packages':'/package/<pkg_name>',
+        #         'distributions':'/dist/<release>/<dist>/<arch>',
+        #         'architecture':'/arch/<arch>',
+        #         'version':'/version/<arch>'
+        # }
+        return {'version':'/version/<arch>'
         }
 
 
-class Deb(restful.Resource):
-    def get(self, pkg=None):
-        status = deb_dict
-        if pkg:
-            try:
-                status = deb_dict[pkg]
-            except KeyError:
-                pass
+# class Deb(restful.Resource):
+#     def get(self, pkg=None):
+#         status = deb_dict
+#         if pkg:
+#             try:
+#                 status = deb_dict[pkg]
+#             except KeyError:
+#                 pass
 
-        return status
+#         return status
 
 
-class Dist(restful.Resource):
-    def get(self, release=None, distribution=None, arch=None):
-        status = {}
-        if release:
-            status = dist_dict[release]
-            if distribution:
-                status = dist_dict[release][distribution]
-                if arch:
-                    status = dist_dict[release][distribution][arch]
+# class Dist(restful.Resource):
+#     def get(self, release=None, distribution=None, arch=None):
+#         status = {}
+#         if release:
+#             status = dist_dict[release]
+#             if distribution:
+#                 status = dist_dict[release][distribution]
+#                 if arch:
+#                     status = dist_dict[release][distribution][arch]
 
-        return status
+#         return status
 
-class Arch(restful.Resource):
-    def get(self, arch=None):
-        status = arch_dict
-        if arch:
-            try:
-                status = arch_dict[arch]
-            except KeyError:
-                pass
+# class Arch(restful.Resource):
+#     def get(self, arch=None):
+#         status = arch_dict
+#         if arch:
+#             try:
+#                 status = arch_dict[arch]
+#             except KeyError:
+#                 pass
 
-        return status
+#         return status
 
 
 class Version(restful.Resource):
-    def get(self, pkg=None):
+    def get(self, pkg=None, version=None):
 
         status = ver_dict
         if pkg:
-            try:
-                status = {"current_version": ver_dict[pkg]["version"],
-                          "info_url": ver_dict[pkg]["info"],
-                          "deb_url": ver_dict[pkg]["deb"]}
-            except KeyError:
-                pass
+            if not version:
+                try:
+                    status = {"current_version": ver_dict['ultimo'][pkg]["version"],
+                              "info_url": ver_dict['ultimo'][pkg]["info_url"],
+                              "deb_url": ver_dict['ultimo'][pkg]["deb_url"]}
+                except KeyError:
+                    pass
+
+            else:
+                try:
+                    status = {"current_version": version,
+                              "info_url": ver_dict['por_version'][pkg][version]["info_url"],
+                              "deb_url": ver_dict['por_version'][pkg][version]["deb_url"]}
+                except KeyError:
+                    pass
+
 
         return status
 
 
 api.add_resource(Home,
                  '/')
-api.add_resource(Deb,
-                 '/package',
-                 '/package/<string:pkg>'
-                 )
-api.add_resource(Dist,
-                 '/dist',
-                 '/dist/<string:release>',
-                 '/dist/<string:release>/<string:distribution>',
-                 '/dist/<string:release>/<string:distribution>/<string:arch>',
-                 )
-api.add_resource(Arch,
-                 '/arch',
-                 '/arch/<string:arch>',
-                 )
+# api.add_resource(Deb,
+#                  '/package',
+#                  '/package/<string:pkg>'
+#                  )
+# api.add_resource(Dist,
+#                  '/dist',
+#                  '/dist/<string:release>',
+#                  '/dist/<string:release>/<string:distribution>',
+#                  '/dist/<string:release>/<string:distribution>/<string:arch>',
+#                  )
+# api.add_resource(Arch,
+#                  '/arch',
+#                  '/arch/<string:arch>',
+#                  )
 api.add_resource(Version,
                  '/version',
-                 '/version/<string:pkg>'
+                 '/version/<string:pkg>',
+                 '/version/<string:pkg>/<string:version>'
                  )
 
 if __name__ == '__main__':
